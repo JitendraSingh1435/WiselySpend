@@ -4,6 +4,12 @@ from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
+from database.queries import (
+    get_category_breakdown,
+    get_recent_transactions,
+    get_summary_stats,
+    get_user_by_id,
+)
 
 app = Flask(__name__)
 app.secret_key = "dev"
@@ -98,31 +104,13 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    user = {
-        "name": "Anjali Mehta",
-        "email": "anjali.mehta@example.com",
-        "initials": "AM",
-        "member_since": "March 2025",
-    }
-    stats = {
-        "total_spent": 18450.00,
-        "transaction_count": 42,
-        "top_category": "Food",
-    }
-    transactions = [
-        {"date": "2026-08-24", "description": "Dinner with friends", "category": "Food", "amount": 275.00},
-        {"date": "2026-08-19", "description": "Miscellaneous", "category": "Other", "amount": 120.00},
-        {"date": "2026-08-15", "description": "New shoes", "category": "Shopping", "amount": 1999.00},
-        {"date": "2026-08-12", "description": "Pharmacy", "category": "Health", "amount": 350.00},
-        {"date": "2026-08-08", "description": "Movie night", "category": "Entertainment", "amount": 899.00},
-        {"date": "2026-08-05", "description": "Electricity bill", "category": "Bills", "amount": 1200.00},
-    ]
+    user_id = session["user_id"]
+    user = get_user_by_id(user_id)
+    stats = get_summary_stats(user_id)
+    transactions = get_recent_transactions(user_id)
     categories = [
-        {"name": "Food", "total": 7250.00, "percent": 39},
-        {"name": "Bills", "total": 4100.00, "percent": 22},
-        {"name": "Shopping", "total": 3200.00, "percent": 17},
-        {"name": "Entertainment", "total": 2100.00, "percent": 11},
-        {"name": "Health", "total": 1800.00, "percent": 10},
+        {"name": c["name"], "total": c["amount"], "percent": c["pct"]}
+        for c in get_category_breakdown(user_id)
     ]
 
     return render_template(
