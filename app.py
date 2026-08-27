@@ -1,4 +1,6 @@
+import calendar
 import sqlite3
+from datetime import date, datetime
 
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -99,18 +101,68 @@ def logout():
     return redirect(url_for("landing"))
 
 
+def _months_before(d, months):
+    total = d.month - 1 - months
+    year = d.year + total // 12
+    month = total % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _date_presets():
+    today = date.today()
+    return {
+        "this_month": (today.replace(day=1).isoformat(), today.isoformat()),
+        "last_3_months": (_months_before(today, 3).isoformat(), today.isoformat()),
+        "last_6_months": (_months_before(today, 6).isoformat(), today.isoformat()),
+        "all_time": (None, None),
+    }
+
+
+def _parse_date_range(args):
+    raw_from = args.get("date_from")
+    raw_to = args.get("date_to")
+
+    if not (raw_from and raw_to):
+        return None, None, None
+
+    try:
+        parsed_from = datetime.strptime(raw_from, "%Y-%m-%d").date()
+        parsed_to = datetime.strptime(raw_to, "%Y-%m-%d").date()
+    except ValueError:
+        return None, None, None
+
+    if parsed_from > parsed_to:
+        return None, None, "Start date must be before end date."
+
+    return parsed_from.isoformat(), parsed_to.isoformat(), None
+
+
 @app.route("/profile")
 def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
+    presets = _date_presets()
+    date_from, date_to, error = _parse_date_range(request.args)
+
+    active_preset = None
+    for name, (preset_from, preset_to) in presets.items():
+        if preset_from == date_from and preset_to == date_to:
+            active_preset = name
+            break
+    else:
+        # No preset matched (loop completed without a break) — a genuine custom range.
+        if date_from and date_to:
+            active_preset = "custom"
+
     user = get_user_by_id(user_id)
-    stats = get_summary_stats(user_id)
-    transactions = get_recent_transactions(user_id)
+    stats = get_summary_stats(user_id, date_from, date_to)
+    transactions = get_recent_transactions(user_id, date_from=date_from, date_to=date_to)
     categories = [
         {"name": c["name"], "total": c["amount"], "percent": c["pct"]}
-        for c in get_category_breakdown(user_id)
+        for c in get_category_breakdown(user_id, date_from, date_to)
     ]
 
     return render_template(
@@ -119,6 +171,11 @@ def profile():
         stats=stats,
         transactions=transactions,
         categories=categories,
+        presets=presets,
+        active_preset=active_preset,
+        date_from=date_from,
+        date_to=date_to,
+        error=error,
     )
 
 
