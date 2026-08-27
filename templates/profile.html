@@ -2,6 +2,10 @@
 
 {% block title %}Profile — Spendly{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block content %}
 
 <section class="profile-section">
@@ -14,6 +18,30 @@
                 <p class="profile-email">{{ user.email }}</p>
                 <p class="profile-since">Member since {{ user.member_since }}</p>
             </div>
+        </div>
+
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+
+        <div class="filter-bar">
+            <div class="filter-presets">
+                <a href="{{ url_for('profile', date_from=presets.this_month[0], date_to=presets.this_month[1]) }}"
+                   class="filter-preset-btn{{ ' active' if active_preset == 'this_month' else '' }}">This Month</a>
+                <a href="{{ url_for('profile', date_from=presets.last_3_months[0], date_to=presets.last_3_months[1]) }}"
+                   class="filter-preset-btn{{ ' active' if active_preset == 'last_3_months' else '' }}">Last 3 Months</a>
+                <a href="{{ url_for('profile', date_from=presets.last_6_months[0], date_to=presets.last_6_months[1]) }}"
+                   class="filter-preset-btn{{ ' active' if active_preset == 'last_6_months' else '' }}">Last 6 Months</a>
+                <a href="{{ url_for('profile') }}"
+                   class="filter-preset-btn{{ ' active' if active_preset == 'all_time' else '' }}">All Time</a>
+            </div>
+            <form method="get" action="{{ url_for('profile') }}"
+                  class="filter-custom-range{{ ' active' if active_preset == 'custom' else '' }}">
+                <input type="date" name="date_from" value="{{ date_from or '' }}">
+                <span>to</span>
+                <input type="date" name="date_to" value="{{ date_to or '' }}">
+                <button type="submit" class="filter-apply-btn">Apply</button>
+            </form>
         </div>
 
         <div class="profile-stats">
