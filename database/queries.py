@@ -78,6 +78,16 @@ def get_summary_stats(user_id, date_from=None, date_to=None):
     }
 
 
+def insert_expense(user_id, amount, category, expense_date, description):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+        (user_id, amount, category, expense_date, description),
+    )
+    conn.commit()
+    conn.close()
+
+
 def get_category_breakdown(user_id, date_from=None, date_to=None):
     conn = get_db()
     query = """

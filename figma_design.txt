@@ -1,0 +1,29 @@
+    I want to add an Analytics module to the Spendly
+    expense tracker app.
+
+    Here is the Figma design for the Coming Soon page: [https://www.figma.com/design/QSl3ptxK7rQPOoeiJ9oaZW/Comming-Soon-Template?m=auto&t=93tudOBrqCkKMA66-6]
+
+    Please do the following:
+
+    1. Read the Figma design and convert it to a
+    Jinja2 HTML template (analytics.html) that
+    matches the design exactly
+    2. Add an "Analytics" menu item to the navbar
+    in base.html (or wherever the navbar is defined)
+        - The Analytics menu item should only be visible
+        to logged in users in the navbar
+    3. Create a Flask route in app.py for /analytics
+    that renders the coming soon page
+        - Protect this route so only logged in users
+        can access it
+        - If a logged out user tries to visit /analytics
+        directly via URL, redirect them to the login page
+    4. Make sure the active state of the navbar
+    highlights "Analytics" when on that page
+
+    Keep the styling consistent with the existing
+    Spendly design and use the same CSS patterns
+    already in the project. Use whatever authentication
+    mechanism is already being used in app.py
+    (session, flask-login, etc.) — do not introduce
+    a new auth library.

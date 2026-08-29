@@ -1,4 +1,5 @@
 import calendar
+import math
 import sqlite3
 from datetime import date, datetime
 
@@ -11,10 +12,18 @@ from database.queries import (
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
+    insert_expense,
 )
 
 app = Flask(__name__)
 app.secret_key = "dev"
+
+ALLOWED_CATEGORIES = [
+    "Food", "Transport", "Bills", "Health",
+    "Entertainment", "Shopping", "Other",
+]
+INVALID_AMOUNT_ERROR = "Enter a valid amount greater than 0."
+DESCRIPTION_MAX_LENGTH = 200
 
 with app.app_context():
     init_db()
@@ -179,13 +188,78 @@ def profile():
     )
 
 
+@app.route("/analytics")
+def analytics():
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    return render_template("analytics.html")
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
-@app.route("/expenses/add")
+def _validate_expense_form(amount_raw, category, date_raw):
+    """Returns (amount, error) — amount is None when error is set."""
+    try:
+        amount = float(amount_raw)
+    except ValueError:
+        return None, INVALID_AMOUNT_ERROR
+    if not math.isfinite(amount) or amount <= 0:
+        return None, INVALID_AMOUNT_ERROR
+
+    if category not in ALLOWED_CATEGORIES:
+        return None, "Please select a valid category."
+
+    try:
+        datetime.strptime(date_raw, "%Y-%m-%d")
+    except ValueError:
+        return None, "Enter a valid date."
+
+    return amount, None
+
+
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "GET":
+        return render_template(
+            "add_expense.html",
+            categories=ALLOWED_CATEGORIES,
+            amount="",
+            category="",
+            date=date.today().isoformat(),
+            description="",
+            error=None,
+        )
+
+    amount_raw = request.form.get("amount", "")
+    category = request.form.get("category", "")
+    date_raw = request.form.get("date", "")
+    description_raw = request.form.get("description", "")
+
+    def render_error(message):
+        return render_template(
+            "add_expense.html",
+            categories=ALLOWED_CATEGORIES,
+            amount=amount_raw,
+            category=category,
+            date=date_raw,
+            description=description_raw,
+            error=message,
+        )
+
+    amount, error = _validate_expense_form(amount_raw, category, date_raw)
+    if error:
+        return render_error(error)
+
+    description = description_raw.strip()[:DESCRIPTION_MAX_LENGTH] or None
+
+    insert_expense(session["user_id"], amount, category, date_raw, description)
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/edit")

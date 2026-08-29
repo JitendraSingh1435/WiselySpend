@@ -9,3 +9,5 @@ __pycache__/
 .claude/plans/
 .pytest_cache/
 *.db
+*.txt
+*.pdf
