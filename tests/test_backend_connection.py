@@ -38,7 +38,7 @@ def test_get_recent_transactions_ordered(seeded_user_id):
     assert len(txs) == 8
     dates = [t["date"] for t in txs]
     assert dates == sorted(dates, reverse=True)
-    assert set(txs[0].keys()) == {"date", "description", "category", "amount"}
+    assert set(txs[0].keys()) == {"id", "date", "description", "category", "amount"}
 
 
 def test_get_recent_transactions_empty(empty_user_id):
