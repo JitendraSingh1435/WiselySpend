@@ -38,7 +38,7 @@ def get_user_by_id(user_id):
 def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     conn = get_db()
     query = """
-        SELECT date, description, category, amount
+        SELECT id, date, description, category, amount
         FROM expenses
         WHERE user_id = ?
     """
@@ -50,6 +50,17 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+def get_expense_by_id(expense_id, user_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id, user_id, amount, category, date, description "
+        "FROM expenses WHERE id = ? AND user_id = ?",
+        (expense_id, user_id),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def get_summary_stats(user_id, date_from=None, date_to=None):
@@ -83,6 +94,17 @@ def insert_expense(user_id, amount, category, expense_date, description):
     conn.execute(
         "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
         (user_id, amount, category, expense_date, description),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_expense(expense_id, user_id, amount, category, expense_date, description):
+    conn = get_db()
+    conn.execute(
+        "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+        "WHERE id = ? AND user_id = ?",
+        (amount, category, expense_date, description, expense_id, user_id),
     )
     conn.commit()
     conn.close()

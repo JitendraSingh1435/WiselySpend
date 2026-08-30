@@ -3,16 +3,18 @@ import math
 import sqlite3
 from datetime import date, datetime
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, abort, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
 from database.queries import (
     get_category_breakdown,
+    get_expense_by_id,
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
     insert_expense,
+    update_expense,
 )
 
 app = Flask(__name__)
@@ -262,9 +264,52 @@ def add_expense():
     return redirect(url_for("profile"))
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+    expense = get_expense_by_id(id, user_id)
+    if expense is None:
+        abort(404)
+
+    if request.method == "GET":
+        return render_template(
+            "edit_expense.html",
+            expense=expense,
+            categories=ALLOWED_CATEGORIES,
+            amount=expense["amount"],
+            category=expense["category"],
+            date=expense["date"],
+            description=expense["description"] or "",
+            error=None,
+        )
+
+    amount_raw = request.form.get("amount", "")
+    category = request.form.get("category", "")
+    date_raw = request.form.get("date", "")
+    description_raw = request.form.get("description", "")
+
+    def render_error(message):
+        return render_template(
+            "edit_expense.html",
+            expense=expense,
+            categories=ALLOWED_CATEGORIES,
+            amount=amount_raw,
+            category=category,
+            date=date_raw,
+            description=description_raw,
+            error=message,
+        )
+
+    amount, error = _validate_expense_form(amount_raw, category, date_raw)
+    if error:
+        return render_error(error)
+
+    description = description_raw.strip()[:DESCRIPTION_MAX_LENGTH] or None
+    update_expense(id, user_id, amount, category, date_raw, description)
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/delete")
